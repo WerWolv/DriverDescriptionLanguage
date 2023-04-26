@@ -32,9 +32,13 @@ struct ASTPrinter : Visitor {
         this->handleIndent();
 
         fmt::print("fn {}(", node.name());
-        for (auto &parameter : node.parameters()) {
-            parameter->accept(*this);
-            fmt::print(", ");
+
+        auto &parameters = node.parameters();
+        for (size_t i = 0; i < parameters.size(); i++) {
+            node.parameters()[i]->accept(*this);
+
+            if (i != parameters.size() - 1)
+                fmt::print(", ");
         }
         fmt::print(") {{\n");
 
@@ -90,7 +94,7 @@ private:
 auto main() -> int {
     // Test source code
     std::string_view code = R"(
-        driver Test {
+        driver {% TEMPLATE %}{% TEMPLATE %} {
             fn main(u32 x, f64 y) {
                 [[
                     HAL_I2C_Master_Transmit(&hi2c1, 0x00, 0x00, 0x00, 0x00);
@@ -99,9 +103,13 @@ auto main() -> int {
         }
     )";
 
+    std::map<std::string_view, std::string_view> placeholders;
+    placeholders["TEMPLATE"] = "{% TEST %}{% TEST %}";
+    placeholders["TEST"] = "STM32F4";
+
     // Lex the input code into tokens
     std::vector<lexer::Token> tokens;
-    for (auto lexer = lexer::lex(code); lexer;) {
+    for (auto lexer = lexer::lex(code, placeholders); lexer;) {
         auto result = lexer();
 
         if (!result.has_value()) {

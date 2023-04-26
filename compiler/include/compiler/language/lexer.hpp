@@ -3,6 +3,7 @@
 #include <compiler/helpers/generator.hpp>
 
 #include <expected>
+#include <map>
 #include <string_view>
 
 #include <fmt/format.h>
@@ -16,6 +17,7 @@ namespace compiler::language::lexer {
             Keyword,
             BuiltinType,
             Operator,
+            Placeholder,
             StringLiteral,
             CharacterLiteral,
             NumericLiteral,
@@ -31,6 +33,8 @@ namespace compiler::language::lexer {
         [[nodiscard]] auto type() const -> Type { return m_type; }
         [[nodiscard]] auto value() const -> std::string_view { return m_value; }
 
+        [[nodiscard]] auto value() -> std::string_view& { return m_value; }
+
     private:
         Type m_type = Type::EndOfInput;
         std::string_view m_value;
@@ -39,6 +43,8 @@ namespace compiler::language::lexer {
     struct LexedData {
         Token  token;
         size_t length = 0;
+
+        operator Token() const { return this->token; }
     };
 
     enum class LexError {
@@ -46,7 +52,8 @@ namespace compiler::language::lexer {
         UnterminatedComment,
         InvalidCharacter,
         InvalidNumericLiteral,
-        UnknownToken
+        UnknownToken,
+        UnknownPlaceholder
     };
 
     constexpr static inline auto KeywordDriver              = Token(Token::Type::Keyword, "driver");
@@ -70,7 +77,7 @@ namespace compiler::language::lexer {
     using LexResult = std::expected<LexedData, LexError>;
     using TokenGenerator = hlp::Generator<std::expected<Token, LexError>>;
 
-    auto lex(std::string_view &source) -> TokenGenerator;
+    auto lex(std::string_view &source, const std::map<std::string_view, std::string_view> &placeholders) -> TokenGenerator;
 
 }
 
@@ -86,6 +93,7 @@ template <> struct fmt::formatter<compiler::language::lexer::LexError>: formatte
             case InvalidCharacter:          name = "invalid character";             break;
             case InvalidNumericLiteral:     name = "invalid numeric literal";       break;
             case UnknownToken:              name = "unknown token";                 break;
+            case UnknownPlaceholder:        name = "unknown placeholder";           break;
         }
 
         return formatter<string_view>::format(name, ctx);

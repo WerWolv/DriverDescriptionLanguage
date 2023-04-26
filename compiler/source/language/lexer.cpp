@@ -5,41 +5,42 @@
 #include <stdexcept>
 
 #include <compiler/helpers/static_string.hpp>
+#include <wolv/utils/string.hpp>
 
 namespace compiler::language::lexer {
 
     template<hlp::StaticString Value>
     using LexKeyword = decltype(
-    [](std::string_view &source) -> std::optional<LexResult> {
-        // Check if the source starts with the keyword
-        if (source.starts_with(Value)) {
+        [](std::string_view &source) -> std::optional<LexResult> {
+            // Check if the source starts with the keyword
+            if (source.starts_with(Value)) {
 
-            // Make sure the keyword is doesn't have any other alphanumerical characters following it
-            if (source.size() == Value.size() || !std::isalnum(source[Value.size()])) {
-                return LexedData { Token(Token::Type::Keyword, Value), Value.size() };
+                // Make sure the keyword is doesn't have any other alphanumerical characters following it
+                if (source.size() == Value.size() || !std::isalnum(source[Value.size()])) {
+                    return LexedData { Token(Token::Type::Keyword, Value), Value.size() };
+                }
+
             }
 
+            return std::nullopt;
         }
-
-        return std::nullopt;
-    }
     );
 
     template<hlp::StaticString Value>
     using LexBuiltinType = decltype(
-    [](std::string_view &source) -> std::optional<LexResult> {
-        // Check if the source starts with the keyword
-        if (source.starts_with(Value)) {
+        [](std::string_view &source) -> std::optional<LexResult> {
+            // Check if the source starts with the keyword
+            if (source.starts_with(Value)) {
 
-            // Make sure the keyword is doesn't have any other alphanumerical characters following it
-            if (source.size() == Value.size() || !std::isalnum(source[Value.size()])) {
-                return LexedData { Token(Token::Type::BuiltinType, Value), Value.size() };
+                // Make sure the keyword is doesn't have any other alphanumerical characters following it
+                if (source.size() == Value.size() || !std::isalnum(source[Value.size()])) {
+                    return LexedData { Token(Token::Type::BuiltinType, Value), Value.size() };
+                }
+
             }
 
+            return std::nullopt;
         }
-
-        return std::nullopt;
-    }
     );
 
     using LexWhitespace = decltype(
@@ -89,44 +90,45 @@ namespace compiler::language::lexer {
     );
 
     using LexNumericLiteral = decltype(
-    [](std::string_view &source) -> std::optional<LexResult> {
+        [](std::string_view &source) -> std::optional<LexResult> {
 
-        if (source.starts_with("0x")) {
-            // Hexadecimal literal
-            size_t length = 2;
-            while (length < source.size() && std::isxdigit(source[length])) {
-                length++;
+            if (source.starts_with("0x")) {
+                // Hexadecimal literal
+                size_t length = 2;
+                while (length < source.size() && std::isxdigit(source[length])) {
+                    length++;
+                }
+
+                return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
+            } else if (source.starts_with("0b")) {
+                // Binary literal
+                size_t length = 2;
+                while (length < source.size() && (source[length] == '0' || source[length] == '1')) {
+                    length++;
+                }
+
+                return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
+            } else if (source.starts_with("0o")) {
+                // Octal literal
+                size_t length = 2;
+                while (length < source.size() && (source[length] >= '0' && source[length] <= '7')) {
+                    length++;
+                }
+
+                return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
+            } else if (std::isdigit(source.front())) {
+                // Decimal literal
+                size_t length = 1;
+                while (length < source.size() && std::isdigit(source[length])) {
+                    length++;
+                }
+
+                return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
             }
 
-            return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
-        } else if (source.starts_with("0b")) {
-            // Binary literal
-            size_t length = 2;
-            while (length < source.size() && (source[length] == '0' || source[length] == '1')) {
-                length++;
-            }
-
-            return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
-        } else if (source.starts_with("0o")) {
-            // Octal literal
-            size_t length = 2;
-            while (length < source.size() && (source[length] >= '0' && source[length] <= '7')) {
-                length++;
-            }
-
-            return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
-        } else if (std::isdigit(source.front())) {
-            // Decimal literal
-            size_t length = 1;
-            while (length < source.size() && std::isdigit(source[length])) {
-                length++;
-            }
-
-            return LexedData { Token(Token::Type::NumericLiteral, source.substr(0, length)), length };
+            return std::nullopt;
         }
-
-        return std::nullopt;
-    });
+    );
 
     template<hlp::StaticString Begin, hlp::StaticString End, Token::Type Type>
     using LexStringLike = decltype(
@@ -145,7 +147,7 @@ namespace compiler::language::lexer {
                     return std::unexpected(LexError::UnterminatedStringLiteral);
                 }
 
-                return LexedData { Token(Type, source.substr(Begin.size(), length - Begin.size() - End.size())), length + End.size() };
+                return LexedData { Token(Type, source.substr(Begin.size(), length - End.size())), length + End.size() };
             }
 
             return std::nullopt;
@@ -244,6 +246,7 @@ namespace compiler::language::lexer {
             LexStringLike<"\"", "\"", Token::Type::StringLiteral>,
             LexStringLike<"'", "'", Token::Type::CharacterLiteral>,
             LexStringLike<"[[", "]]", Token::Type::RawCodeBlock>,
+            LexStringLike<"{%", "%}", Token::Type::Placeholder>,
             LexNumericLiteral,
 
             // Separators
@@ -264,7 +267,7 @@ namespace compiler::language::lexer {
             LexIdentifier
     >();
 
-    constexpr LexResult lexToken(std::string_view &source, const auto &first, const auto &...rest) {
+    constexpr auto lexString(std::string_view &source, const auto &first, const auto &...rest) -> LexResult {
 
         // Iterate over all lexers and try to lex the input with each lexer
         if (auto result = first(source); result.has_value()) {
@@ -272,14 +275,20 @@ namespace compiler::language::lexer {
             return *result;
         } else if constexpr (sizeof...(rest) > 0) {
             // If the lexer was not able to lex the input, try the next lexer
-            return lexToken(source, rest...);
+            return lexString(source, rest...);
         }
 
         // If no lexer was able to lex the input, return an error
         return std::unexpected(LexError::UnknownToken);
     }
 
-    auto lex(std::string_view &source) -> hlp::Generator<std::expected<Token, LexError>> {
+    auto lexString(std::string_view &source) -> LexResult {
+        return std::apply([&source](const auto &...lexers) {
+            return lexString(source, lexers...);
+        }, Tokens);
+    }
+
+    auto lex(std::string_view &source, const std::map<std::string_view, std::string_view> &placeholders) -> hlp::Generator<std::expected<Token, LexError>> {
         // This function is a generator / coroutine that yields tokens from the source code
         // It will try to lex the source code with each lexer in the Tokens tuple and yield the token if one was found.
         // If no lexer was able to lex the input, it will yield an error.
@@ -287,9 +296,7 @@ namespace compiler::language::lexer {
         while (true) {
 
             // Try to lex the input with each lexer in the Tokens tuple
-            auto result = std::apply([&source](const auto &...lexers) {
-                return lexToken(source, lexers...);
-            }, Tokens);
+            auto result = lexString(source);
 
             // Check if the lexer was able to lex the input
             if (!result.has_value()) {
@@ -297,16 +304,40 @@ namespace compiler::language::lexer {
                 co_return;
             }
 
-            // Get the lexed token and the length of the token
-            auto [token, length] = *result;
+            {
+                // Unpack the lexed result
+                auto [token, length] = *result;
 
-            // Check if the token is the EndOfFile token
-            if (token.type() == Token::Type::EndOfInput) {
-                co_return;
+                // Remove the lexed token from the source code
+                source = source.substr(length);
+
+                // Handle tokens with special meaning
+                switch (token.type()) {
+                    using enum Token::Type;
+                    case EndOfInput:
+                        co_return;
+                    case Placeholder:
+                        if (auto it = placeholders.find(wolv::util::trim(token.value())); it != placeholders.end()) {
+                            auto [key, value] = *it;
+
+                            for (auto lexer = lexer::lex(value, placeholders); lexer;) {
+                                auto newResult = lexer();
+                                co_yield newResult;
+                            }
+
+                            continue;
+                        } else {
+                            co_yield std::unexpected(LexError::UnknownPlaceholder);
+                            co_return;
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
 
-            // Remove the lexed token from the source code
-            source = source.substr(length);
+            // Get the lexed token and the length of the token
+            auto [token, length] = *result;
 
             // Yield the token
             co_yield token;
