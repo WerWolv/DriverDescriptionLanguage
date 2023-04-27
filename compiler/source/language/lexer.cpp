@@ -290,7 +290,7 @@ namespace compiler::language::lexer {
         }, Tokens);
     }
 
-    auto lex(std::string_view &source, const std::map<std::string_view, std::string_view> &placeholders) -> hlp::Generator<std::expected<Token, LexError>> {
+    auto lex(std::string_view &source, const std::map<std::string, std::string> &placeholders) -> hlp::Generator<std::expected<Token, LexError>> {
         // This function is a generator / coroutine that yields tokens from the source code
         // It will try to lex the source code with each lexer in the Tokens tuple and yield the token if one was found.
         // If no lexer was able to lex the input, it will yield an error.
@@ -319,10 +319,11 @@ namespace compiler::language::lexer {
                     case EndOfInput:
                         co_return;
                     case Placeholder:
-                        if (auto it = placeholders.find(wolv::util::trim(token.value())); it != placeholders.end()) {
-                            auto [key, value] = *it;
+                        if (auto it = placeholders.find(std::string(wolv::util::trim(token.value()))); it != placeholders.end()) {
+                            auto &[key, value] = *it;
 
-                            for (auto lexer = lexer::lex(value, placeholders); lexer;) {
+                            std::string_view valueView = value;
+                            for (auto lexer = lexer::lex(valueView, placeholders); lexer;) {
                                 auto newResult = lexer();
                                 co_yield newResult;
                             }

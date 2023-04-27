@@ -88,7 +88,7 @@ namespace compiler::language::lexer {
     using LexResult = std::expected<LexedData, LexError>;
     using TokenGenerator = hlp::Generator<std::expected<Token, LexError>>;
 
-    auto lex(std::string_view &source, const std::map<std::string_view, std::string_view> &placeholders) -> TokenGenerator;
+    auto lex(std::string_view &source, const std::map<std::string, std::string> &placeholders) -> TokenGenerator;
 
 }
 

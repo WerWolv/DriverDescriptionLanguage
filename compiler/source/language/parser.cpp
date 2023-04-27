@@ -130,6 +130,8 @@ namespace compiler::language::parser {
             while (!matchesSequence(SeparatorCloseBrace)) {
                 if (matchesSequence(RawCodeBlock)) {
                     body.emplace_back(std::make_unique<ast::NodeRawCodeBlock>(wolv::util::trim(this->getValue(-1))));
+                } else {
+                    return std::unexpected(ParseError::UnexpectedToken);
                 }
             }
         }
@@ -181,7 +183,8 @@ namespace compiler::language::parser {
                 typeName += fmt::format("::{}", this->getValue(-1));
             }
 
-            typeName = this->getFullTypeName(typeName);
+            if (!this->m_drivers.contains(typeName))
+                typeName = this->getFullTypeName(typeName);
 
             if (this->m_drivers.contains(typeName)) {
                 auto driver = hlp::unique_ptr_cast<ast::NodeDriver>(this->m_drivers[typeName]->clone());

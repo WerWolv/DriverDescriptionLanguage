@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <compiler/helpers/utils.hpp>
+#include <compiler/language/lexer.hpp>
 
 namespace compiler::language::ast {
 

@@ -22,16 +22,24 @@ namespace compiler::language::parser {
 
     struct Parser {
     public:
+        [[nodiscard]] auto parse(const std::vector<lexer::Token> &tokens) -> ASTGenerator;
+
+        [[nodiscard]] auto getDrivers() const -> const std::map<std::string, ast::NodeDriver*> & {
+            return this->m_drivers;
+        }
+
+        auto setDrivers(std::map<std::string, ast::NodeDriver*> &&drivers) {
+            this->m_drivers = std::move(drivers);
+        }
+
+    private:
+        auto getFullTypeName(std::string_view typeName) -> std::string;
+
         [[nodiscard]] auto parseDriver() -> ParseResult<ast::Node>;
         [[nodiscard]] auto parseFunction() -> ParseResult<ast::NodeFunction>;
         [[nodiscard]] auto parseType(bool allowBuiltinTypes = true) -> ParseResult<ast::NodeType>;
         [[nodiscard]] auto parseParameterList() -> hlp::Generator<ParseResult<ast::NodeVariable>>;
         [[nodiscard]] auto parseNamespace() -> ASTGenerator;
-
-        [[nodiscard]] auto parse(const std::vector<lexer::Token> &tokens) -> ASTGenerator;
-
-    private:
-        auto getFullTypeName(std::string_view typeName) -> std::string;
 
     private:
         [[nodiscard]] auto peek() const -> const lexer::Token & {

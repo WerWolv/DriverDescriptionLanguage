@@ -20,8 +20,25 @@ FetchContent_Declare(
         USES_TERMINAL_DOWNLOAD TRUE
 )
 
+FetchContent_Declare(
+        cxxopts
+        GIT_REPOSITORY https://github.com/jarro2783/cxxopts.git
+        GIT_TAG v3.1.1
+        GIT_PROGRESS TRUE
+        USES_TERMINAL_DOWNLOAD TRUE
+)
+
+FetchContent_Declare(
+        tomlplusplus
+        GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+        GIT_TAG v3.3.0
+        GIT_PROGRESS TRUE
+        USES_TERMINAL_DOWNLOAD TRUE
+)
+
 FetchContent_MakeAvailable(fmt)
 FetchContent_MakeAvailable(libwolv)
-
+FetchContent_MakeAvailable(cxxopts)
+FetchContent_MakeAvailable(tomlplusplus)
 
 add_subdirectory(compiler)
