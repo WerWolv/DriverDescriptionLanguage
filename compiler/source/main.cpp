@@ -16,10 +16,50 @@ struct ASTPrinter : Visitor {
     auto visit(const NodeDriver &node) -> void override{
         this->handleIndent();
 
-        fmt::print("driver {} ", node.name());
+        fmt::print("driver {}", node.name());
+
+        if (!node.templateParameters().empty()) {
+            fmt::print("<");
+            for (size_t i = 0; i < node.templateParameters().size(); i++) {
+                node.templateParameters()[i]->accept(*this);
+
+                if (i != node.templateParameters().size() - 1)
+                    fmt::print(", ");
+            }
+            fmt::print("> ");
+        } else {
+            fmt::print(" ");
+        }
 
         if (node.inheritance() != nullptr) {
-            fmt::print(": {} ", node.inheritance()->name());
+            fmt::print(": {}", node.inheritance()->name());
+
+            if (auto &values = node.inheritance()->templateValues(); !values.empty()) {
+                fmt::print("<");
+                for (size_t i = 0; i < values.size(); i++) {
+                    auto &value = values[i];
+
+                    switch (value.type()) {
+                        case lexer::Token::Type::StringLiteral:
+                            fmt::print("\"{}\"", value.value());
+                            break;
+                        case lexer::Token::Type::NumericLiteral:
+                            fmt::print("{}", value.value());
+                            break;
+                        case lexer::Token::Type::CharacterLiteral:
+                            fmt::print("'{}'", value.value());
+                            break;
+                        default:
+                            break;
+                    }
+
+                    if (i != values.size() - 1)
+                        fmt::print(", ");
+                }
+                fmt::print("> ");
+            } else {
+                fmt::print(" ");
+            }
         }
 
         fmt::print("{{\n");
@@ -100,11 +140,11 @@ private:
 auto main() -> int {
     // Test source code
     std::string_view code = R"(
-        driver I2C {
+        driver I2C<u8 Address> {
 
         }
 
-        driver {% TEMPLATE %} : I2C {
+        driver {% TEMPLATE %} : I2C<0x123> {
             fn main(u32 x, f64 y) {
                 [[
                     HAL_I2C_Master_Transmit(&hi2c1, 0x00, 0x00, 0x00, 0x00);

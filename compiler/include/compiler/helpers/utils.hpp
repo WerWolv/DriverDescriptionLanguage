@@ -6,7 +6,7 @@ namespace compiler::hlp {
 
     template<typename T>
     auto unique_ptr_cast(auto &&ptr) -> std::unique_ptr<T> {
-        return std::unique_ptr<T>(static_cast<T *>(ptr.release()));
+        return std::unique_ptr<T>(dynamic_cast<T *>(ptr.release()));
     }
 
 }

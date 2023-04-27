@@ -256,12 +256,12 @@ namespace compiler::language::lexer {
             LexSeparator<")">,
             LexSeparator<"[">,
             LexSeparator<"]">,
-            LexSeparator<"<">,
-            LexSeparator<">">,
             LexSeparator<";">,
             LexSeparator<",">,
 
             // Operators
+            LexOperator<"<">,
+            LexOperator<">">,
             LexOperator<":">,
             LexOperator<"=>">,
 

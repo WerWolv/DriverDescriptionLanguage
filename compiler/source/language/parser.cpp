@@ -11,13 +11,30 @@ namespace compiler::language::parser {
         // Read the driver's name
         auto driverName = this->getValue(-1);
 
-        // Parse the inheritance
-        ParseResult<ast::NodeType> inheritance;
-        if (matchesSequence(OperatorColon)) {
-            inheritance = parseType();
+        // Parse template list
+        std::vector<std::unique_ptr<ast::NodeVariable>> templateParameters;
+        if (matchesSequence(OperatorLessThan)) {
+            auto templateList = this->parseParameterList();
 
-            if (!inheritance.has_value())
-                return std::unexpected(inheritance.error());
+            if (!templateList.has_value())
+                return std::unexpected(templateList.error());
+
+            auto &value = templateList.value();
+            std::move(value.begin(), value.end(), std::back_inserter(templateParameters));
+
+            if (!matchesSequence(OperatorGreaterThan))
+                return std::unexpected(ParseError::UnexpectedToken);
+        }
+
+        // Parse inheritance
+        std::unique_ptr<ast::NodeDriver> inheritance;
+        if (matchesSequence(OperatorColon)) {
+            auto result = parseType(false);
+
+            if (!result.has_value())
+                return std::unexpected(result.error());
+
+            inheritance = hlp::unique_ptr_cast<ast::NodeDriver>(result.value()->type()->clone());
         }
 
         if (!matchesSequence(SeparatorOpenBrace))
@@ -40,19 +57,16 @@ namespace compiler::language::parser {
             }
         }
 
-        auto result = std::make_unique<ast::NodeDriver>(driverName, std::move(inheritance.value()), std::move(functions));
+        auto result = std::make_unique<ast::NodeDriver>(driverName, std::move(inheritance), std::move(templateParameters), std::move(functions));
 
         this->m_drivers[driverName] = result.get();
 
         return result;
     }
 
-    [[nodiscard]] auto Parser::parseFunction() -> ParseResult<ast::NodeFunction> {
-        auto functionName = this->getValue(-2);
-
-        // Parse the function header
+    auto Parser::parseParameterList() -> ParseListResult<ast::NodeVariable> {
         std::vector<std::unique_ptr<ast::NodeVariable>> parameters;
-        while (!matchesSequence(SeparatorCloseParenthesis)) {
+        while (true) {
             // Parse the parameter type
             auto type = parseType();
             if (!type.has_value()) {
@@ -68,15 +82,31 @@ namespace compiler::language::parser {
                 // Check if we have reached the end of the parameter list
                 if (matchesSequence(SeparatorComma)) {
                     continue;
-                } else if (matchesSequence(SeparatorCloseParenthesis)) {
-                    break;
                 } else {
-                    return std::unexpected(ParseError::UnexpectedToken);
+                    break;
                 }
 
             } else {
                 return std::unexpected(ParseError::UnexpectedToken);
             }
+        }
+
+        return parameters;
+    }
+
+    [[nodiscard]] auto Parser::parseFunction() -> ParseResult<ast::NodeFunction> {
+        auto functionName = this->getValue(-2);
+
+        // Parse the function header
+        std::vector<std::unique_ptr<ast::NodeVariable>> parameters;
+        while (!matchesSequence(SeparatorCloseParenthesis)) {
+            auto result = this->parseParameterList();
+            if (!result.has_value()) {
+                return std::unexpected(result.error());
+            }
+
+            auto &value = result.value();
+            std::move(value.begin(), value.end(), std::back_inserter(parameters));
         }
 
         // Parse the function body
@@ -97,8 +127,8 @@ namespace compiler::language::parser {
         return std::make_unique<ast::NodeFunction>(functionName, std::move(parameters), std::move(body));
     }
 
-    auto Parser::parseType() -> ParseResult<ast::NodeType> {
-        if (matchesSequence(BuiltinType)) {
+    auto Parser::parseType(bool allowBuiltinTypes) -> ParseResult<ast::NodeType> {
+        if (allowBuiltinTypes && matchesSequence(BuiltinType)) {
             // Parse a builtin type
 
             // Read the type name
@@ -139,7 +169,30 @@ namespace compiler::language::parser {
             auto typeName = this->getValue(-1);
 
             if (this->m_drivers.contains(typeName)) {
-                return std::make_unique<ast::NodeType>(typeName, this->m_drivers[typeName]->clone());
+                auto driver = hlp::unique_ptr_cast<ast::NodeDriver>(this->m_drivers[typeName]->clone());
+
+                if (matchesSequence(OperatorLessThan)) {
+                    // Parse the template parameters
+                    std::vector<lexer::Token> templateValues;
+                    while (!matchesSequence(OperatorGreaterThan)) {
+                        if (matchesSequence(NumericLiteral) || matchesSequence(StringLiteral) || matchesSequence(CharacterLiteral)) {
+                            templateValues.emplace_back(this->m_current[-1]);
+                        } else {
+                            return std::unexpected(ParseError::UnexpectedToken);
+                        }
+
+                        if (matchesSequence(SeparatorComma)) {
+                            continue;
+                        }
+                    }
+
+                    if (templateValues.size() != driver->templateParameters().size())
+                        return std::unexpected(ParseError::InvalidTemplateParameterCount);
+
+                    driver->setTemplateValues(std::move(templateValues));
+                }
+
+                return std::make_unique<ast::NodeType>(typeName, std::move(driver));
             } else {
                 return std::unexpected(ParseError::UnknownType);
             }

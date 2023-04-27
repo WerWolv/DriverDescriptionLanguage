@@ -28,7 +28,7 @@ namespace compiler::language::lexer {
         };
 
         constexpr Token() = default;
-        constexpr Token(Type type, std::string_view value) : m_type(type), m_value(value) { }
+        constexpr Token(Type type, std::string_view value = "") : m_type(type), m_value(value) { }
 
         [[nodiscard]] auto type() const -> Type { return m_type; }
         [[nodiscard]] auto value() const -> std::string_view { return m_value; }
@@ -63,9 +63,9 @@ namespace compiler::language::lexer {
     constexpr static inline auto KeywordDriver              = Token(Token::Type::Keyword, "driver");
     constexpr static inline auto KeywordFunction            = Token(Token::Type::Keyword, "fn");
 
-    constexpr static inline auto RawCodeBlock               = Token(Token::Type::RawCodeBlock, "");
+    constexpr static inline auto RawCodeBlock               = Token(Token::Type::RawCodeBlock);
 
-    constexpr static inline auto BuiltinType                = Token(Token::Type::BuiltinType, "");
+    constexpr static inline auto BuiltinType                = Token(Token::Type::BuiltinType);
 
     constexpr static inline auto SeparatorOpenBrace         = Token(Token::Type::Separator, "{");
     constexpr static inline auto SeparatorCloseBrace        = Token(Token::Type::Separator, "}");
@@ -75,8 +75,14 @@ namespace compiler::language::lexer {
     constexpr static inline auto SeparatorComma             = Token(Token::Type::Separator, ",");
 
     constexpr static inline auto OperatorColon              = Token(Token::Type::Operator, ":");
+    constexpr static inline auto OperatorLessThan           = Token(Token::Type::Operator, "<");
+    constexpr static inline auto OperatorGreaterThan        = Token(Token::Type::Operator, ">");
 
-    constexpr static inline auto Identifier                 = Token(Token::Type::Identifier, "");
+    constexpr static inline auto Identifier                 = Token(Token::Type::Identifier);
+
+    constexpr static inline auto NumericLiteral             = Token(Token::Type::NumericLiteral);
+    constexpr static inline auto StringLiteral              = Token(Token::Type::StringLiteral);
+    constexpr static inline auto CharacterLiteral           = Token(Token::Type::CharacterLiteral);
 
     using LexResult = std::expected<LexedData, LexError>;
     using TokenGenerator = hlp::Generator<std::expected<Token, LexError>>;

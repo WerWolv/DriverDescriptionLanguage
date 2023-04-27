@@ -17,12 +17,12 @@ namespace compiler::language::ast {
     struct Visitor {
         virtual ~Visitor() = default;
 
-        virtual void visit(const NodeDriver &node) = 0;
-        virtual void visit(const NodeFunction &node) = 0;
-        virtual void visit(const NodeVariable &node) = 0;
-        virtual void visit(const NodeBuiltinType &node) = 0;
-        virtual void visit(const NodeType &node) = 0;
-        virtual void visit(const NodeRawCodeBlock &node) = 0;
+        virtual void visit(const NodeDriver &node)          = 0;
+        virtual void visit(const NodeFunction &node)        = 0;
+        virtual void visit(const NodeVariable &node)        = 0;
+        virtual void visit(const NodeBuiltinType &node)     = 0;
+        virtual void visit(const NodeType &node)            = 0;
+        virtual void visit(const NodeRawCodeBlock &node)    = 0;
     };
 
     struct Node {
@@ -171,15 +171,30 @@ namespace compiler::language::ast {
     };
 
     struct NodeDriver : public Node {
-        NodeDriver(std::string_view name, std::unique_ptr<NodeType> &&inheritance, std::vector<std::unique_ptr<NodeFunction>> &&functions)
-            : m_name(name), m_inheritance(std::move(inheritance)), m_functions(std::move(functions)) { }
+        NodeDriver(
+                std::string_view name,
+                std::unique_ptr<NodeDriver> &&inheritance,
+                std::vector<std::unique_ptr<NodeVariable>> &&templateParameters,
+                std::vector<std::unique_ptr<NodeFunction>> &&functions
+                ) :
+                m_name(name),
+                m_inheritance(std::move(inheritance)),
+                m_templateParameters(std::move(templateParameters)),
+                m_functions(std::move(functions)) { }
+
         ~NodeDriver() override = default;
 
         NodeDriver(const NodeDriver &other) {
             this->m_name = other.m_name;
 
             if (other.m_inheritance != nullptr)
-                this->m_inheritance = hlp::unique_ptr_cast<NodeType>(other.m_inheritance->clone());
+                this->m_inheritance = hlp::unique_ptr_cast<NodeDriver>(other.m_inheritance->clone());
+
+            for (const auto &parameter : other.m_templateParameters) {
+                this->m_templateParameters.emplace_back(hlp::unique_ptr_cast<NodeVariable>(parameter->clone()));
+            }
+
+            this->m_templateValues = other.m_templateValues;
 
             for (const auto &function : other.m_functions) {
                 this->m_functions.emplace_back(hlp::unique_ptr_cast<NodeFunction>(function->clone()));
@@ -198,7 +213,7 @@ namespace compiler::language::ast {
             return this->m_name;
         }
 
-        [[nodiscard]] auto inheritance() const -> const NodeType * {
+        [[nodiscard]] auto inheritance() const -> const NodeDriver * {
             return this->m_inheritance.get();
         }
 
@@ -206,9 +221,23 @@ namespace compiler::language::ast {
             return this->m_functions;
         }
 
+        [[nodiscard]] auto templateParameters() const -> const std::vector<std::unique_ptr<NodeVariable>> & {
+            return this->m_templateParameters;
+        }
+
+        [[nodiscard]] auto templateValues() const -> const std::vector<lexer::Token> & {
+            return this->m_templateValues;
+        }
+
+        auto setTemplateValues(std::vector<lexer::Token> &&arguments) -> void {
+            this->m_templateValues = std::move(arguments);
+        }
+
     private:
         std::string_view m_name;
-        std::unique_ptr<NodeType> m_inheritance;
+        std::unique_ptr<NodeDriver> m_inheritance;
+        std::vector<std::unique_ptr<NodeVariable>> m_templateParameters;
+        std::vector<lexer::Token> m_templateValues;
         std::vector<std::unique_ptr<NodeFunction>> m_functions;
     };
 
