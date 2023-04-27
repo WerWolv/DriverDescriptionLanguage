@@ -1,0 +1,9 @@
+driver MAX232 : {% impl %}::UART<115200> {
+
+    fn sendString(u32 data) {
+        [[
+
+        ]]
+    }
+
+}

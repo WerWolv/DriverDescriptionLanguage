@@ -1,0 +1,13 @@
+namespace SC18IM704 {
+
+    driver UART<u32 BaudRate> : {% impl %}::I2C<0x53> {
+
+        fn transmit(u32 data) {
+            [[
+
+            ]]
+        }
+
+    }
+
+}

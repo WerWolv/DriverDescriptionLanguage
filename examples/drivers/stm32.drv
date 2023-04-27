@@ -1,0 +1,7 @@
+namespace STM32 {
+
+    driver I2C<u8 Address> {
+
+    }
+
+}
