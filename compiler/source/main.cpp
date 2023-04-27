@@ -16,7 +16,13 @@ struct ASTPrinter : Visitor {
     auto visit(const NodeDriver &node) -> void override{
         this->handleIndent();
 
-        fmt::print("driver {} {{\n", node.name());
+        fmt::print("driver {} ", node.name());
+
+        if (node.inheritance() != nullptr) {
+            fmt::print(": {} ", node.inheritance()->name());
+        }
+
+        fmt::print("{{\n");
 
         this->increaseIndent();
         for (auto &function : node.functions()) {
@@ -94,17 +100,27 @@ private:
 auto main() -> int {
     // Test source code
     std::string_view code = R"(
-        driver {% TEMPLATE %}{% TEMPLATE %} {
+        driver I2C {
+
+        }
+
+        driver {% TEMPLATE %} : I2C {
             fn main(u32 x, f64 y) {
                 [[
                     HAL_I2C_Master_Transmit(&hi2c1, 0x00, 0x00, 0x00, 0x00);
+                ]]
+            }
+
+            fn main(u8 x, i32 y) {
+                [[
+                    TEST
                 ]]
             }
         }
     )";
 
     std::map<std::string_view, std::string_view> placeholders;
-    placeholders["TEMPLATE"] = "{% TEST %}{% TEST %}";
+    placeholders["TEMPLATE"] = "{% TEST %}";
     placeholders["TEST"] = "STM32F4";
 
     // Lex the input code into tokens
@@ -121,7 +137,7 @@ auto main() -> int {
     }
 
     // Parse the tokens into an AST
-    std::vector<std::unique_ptr<ast::NodeBase>> nodes;
+    std::vector<std::unique_ptr<ast::Node>> nodes;
     for (auto parser = parser::Parser().parse(tokens); parser;) {
         auto result = parser();
 

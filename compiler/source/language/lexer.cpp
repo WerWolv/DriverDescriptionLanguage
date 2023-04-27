@@ -256,6 +256,8 @@ namespace compiler::language::lexer {
             LexSeparator<")">,
             LexSeparator<"[">,
             LexSeparator<"]">,
+            LexSeparator<"<">,
+            LexSeparator<">">,
             LexSeparator<";">,
             LexSeparator<",">,
 

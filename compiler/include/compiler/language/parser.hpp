@@ -11,16 +11,17 @@ namespace compiler::language::parser {
     enum class ParseError {
         UnexpectedToken,
         EndOfInput,
+        UnknownType
     };
 
     template<typename T>
     using ParseResult = std::expected<std::unique_ptr<T>, ParseError>;
 
-    using ASTGenerator = hlp::Generator<ParseResult<ast::NodeBase>>;
+    using ASTGenerator = hlp::Generator<ParseResult<ast::Node>>;
 
     struct Parser {
     public:
-        [[nodiscard]] auto parseDriver() -> ParseResult<ast::NodeBase>;
+        [[nodiscard]] auto parseDriver() -> ParseResult<ast::Node>;
         [[nodiscard]] auto parseFunction() -> ParseResult<ast::NodeFunction>;
         [[nodiscard]] auto parseType() -> ParseResult<ast::NodeType>;
 
@@ -64,6 +65,8 @@ namespace compiler::language::parser {
     private:
         std::vector<lexer::Token>::const_iterator m_current;
         std::vector<lexer::Token>::const_iterator m_end;
+
+        std::map<std::string_view, ast::NodeDriver*> m_drivers;
     };
 
 }
@@ -77,6 +80,7 @@ template <> struct fmt::formatter<compiler::language::parser::ParseError>: forma
             using enum compiler::language::parser::ParseError;
             case UnexpectedToken: name = "unexpected token"; break;
             case EndOfInput:      name = "end of input";     break;
+            case UnknownType:     name = "unknown type";     break;
         }
 
         return formatter<string_view>::format(name, ctx);

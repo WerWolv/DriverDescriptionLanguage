@@ -35,6 +35,10 @@ namespace compiler::language::lexer {
 
         [[nodiscard]] auto value() -> std::string_view& { return m_value; }
 
+        auto operator==(const Token &other) const -> bool {
+            return this->m_type == other.m_type && this->m_value == other.m_value;
+        }
+
     private:
         Type m_type = Type::EndOfInput;
         std::string_view m_value;
@@ -69,8 +73,8 @@ namespace compiler::language::lexer {
     constexpr static inline auto SeparatorCloseParenthesis  = Token(Token::Type::Separator, ")");
     constexpr static inline auto SeparatorSemicolon         = Token(Token::Type::Separator, ";");
     constexpr static inline auto SeparatorComma             = Token(Token::Type::Separator, ",");
-    constexpr static inline auto SeparatorColon             = Token(Token::Type::Separator, ":");
-    constexpr static inline auto SeparatorDot               = Token(Token::Type::Separator, ".");
+
+    constexpr static inline auto OperatorColon              = Token(Token::Type::Operator, ":");
 
     constexpr static inline auto Identifier                 = Token(Token::Type::Identifier, "");
 

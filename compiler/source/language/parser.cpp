@@ -7,9 +7,21 @@
 namespace compiler::language::parser {
     using namespace lexer;
 
-    auto Parser::parseDriver() -> ParseResult<ast::NodeBase> {
+    auto Parser::parseDriver() -> ParseResult<ast::Node> {
         // Read the driver's name
-        auto driverName = this->getValue(-2);
+        auto driverName = this->getValue(-1);
+
+        // Parse the inheritance
+        ParseResult<ast::NodeType> inheritance;
+        if (matchesSequence(OperatorColon)) {
+            inheritance = parseType();
+
+            if (!inheritance.has_value())
+                return std::unexpected(inheritance.error());
+        }
+
+        if (!matchesSequence(SeparatorOpenBrace))
+            return std::unexpected(ParseError::UnexpectedToken);
 
         // Parse the content of the driver
         std::vector<std::unique_ptr<ast::NodeFunction>> functions;
@@ -28,7 +40,11 @@ namespace compiler::language::parser {
             }
         }
 
-        return std::make_unique<ast::NodeDriver>(driverName, nullptr, std::move(functions));
+        auto result = std::make_unique<ast::NodeDriver>(driverName, std::move(inheritance.value()), std::move(functions));
+
+        this->m_drivers[driverName] = result.get();
+
+        return result;
     }
 
     [[nodiscard]] auto Parser::parseFunction() -> ParseResult<ast::NodeFunction> {
@@ -68,7 +84,7 @@ namespace compiler::language::parser {
             return std::unexpected(ParseError::UnexpectedToken);
         }
 
-        std::vector<std::unique_ptr<ast::NodeBase>> body;
+        std::vector<std::unique_ptr<ast::Node>> body;
         {
             // Parse the function body
             while (!matchesSequence(SeparatorCloseBrace)) {
@@ -119,6 +135,14 @@ namespace compiler::language::parser {
             auto type = std::make_unique<ast::NodeBuiltinType>(builtinType, size);
 
             return std::make_unique<ast::NodeType>(typeName, std::move(type));
+        } else if (matchesSequence(Identifier)) {
+            auto typeName = this->getValue(-1);
+
+            if (this->m_drivers.contains(typeName)) {
+                return std::make_unique<ast::NodeType>(typeName, this->m_drivers[typeName]->clone());
+            } else {
+                return std::unexpected(ParseError::UnknownType);
+            }
         } else {
             return std::unexpected(ParseError::UnexpectedToken);
         }
@@ -134,10 +158,10 @@ namespace compiler::language::parser {
                 co_return;
             }
 
-            ParseResult<ast::NodeBase> node;
+            ParseResult<ast::Node> node;
 
             // Parse top level constructs
-            if (matchesSequence(KeywordDriver, Identifier, SeparatorOpenBrace)) {
+            if (matchesSequence(KeywordDriver, Identifier)) {
                 node = parseDriver();
             } else {
                 node = std::unexpected(ParseError::UnexpectedToken);
