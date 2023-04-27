@@ -62,6 +62,7 @@ namespace compiler::language::lexer {
 
     constexpr static inline auto KeywordDriver              = Token(Token::Type::Keyword, "driver");
     constexpr static inline auto KeywordFunction            = Token(Token::Type::Keyword, "fn");
+    constexpr static inline auto KeywordNamespace           = Token(Token::Type::Keyword, "namespace");
 
     constexpr static inline auto RawCodeBlock               = Token(Token::Type::RawCodeBlock);
 

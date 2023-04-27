@@ -140,11 +140,14 @@ private:
 auto main() -> int {
     // Test source code
     std::string_view code = R"(
-        driver I2C<u8 Address> {
+    namespace test {
+        namespace abcd {
+            driver I2C<u8 Address> {
 
+            }
         }
 
-        driver {% TEMPLATE %} : I2C<0x123> {
+        driver {% TEMPLATE %} : abcd::I2C<0x123> {
             fn main(u32 x, f64 y) {
                 [[
                     HAL_I2C_Master_Transmit(&hi2c1, 0x00, 0x00, 0x00, 0x00);
@@ -157,6 +160,7 @@ auto main() -> int {
                 ]]
             }
         }
+    }
     )";
 
     std::map<std::string_view, std::string_view> placeholders;

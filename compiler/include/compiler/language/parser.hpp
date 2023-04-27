@@ -18,9 +18,6 @@ namespace compiler::language::parser {
     template<typename T>
     using ParseResult = std::expected<std::unique_ptr<T>, ParseError>;
 
-    template<typename T>
-    using ParseListResult = std::expected<std::vector<std::unique_ptr<T>>, ParseError>;
-
     using ASTGenerator = hlp::Generator<ParseResult<ast::Node>>;
 
     struct Parser {
@@ -28,9 +25,13 @@ namespace compiler::language::parser {
         [[nodiscard]] auto parseDriver() -> ParseResult<ast::Node>;
         [[nodiscard]] auto parseFunction() -> ParseResult<ast::NodeFunction>;
         [[nodiscard]] auto parseType(bool allowBuiltinTypes = true) -> ParseResult<ast::NodeType>;
-        [[nodiscard]] auto parseParameterList() -> ParseListResult<ast::NodeVariable>;
+        [[nodiscard]] auto parseParameterList() -> hlp::Generator<ParseResult<ast::NodeVariable>>;
+        [[nodiscard]] auto parseNamespace() -> ASTGenerator;
 
         [[nodiscard]] auto parse(const std::vector<lexer::Token> &tokens) -> ASTGenerator;
+
+    private:
+        auto getFullTypeName(std::string_view typeName) -> std::string;
 
     private:
         [[nodiscard]] auto peek() const -> const lexer::Token & {
@@ -71,7 +72,8 @@ namespace compiler::language::parser {
         std::vector<lexer::Token>::const_iterator m_current;
         std::vector<lexer::Token>::const_iterator m_end;
 
-        std::map<std::string_view, ast::NodeDriver*> m_drivers;
+        std::map<std::string, ast::NodeDriver*> m_drivers;
+        std::vector<std::string_view> m_namespaces;
     };
 
 }

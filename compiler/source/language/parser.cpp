@@ -3,24 +3,34 @@
 #include <utility>
 
 #include <wolv/utils/string.hpp>
+#include <fmt/format.h>
 
 namespace compiler::language::parser {
     using namespace lexer;
 
+    auto Parser::getFullTypeName(std::string_view typeName) -> std::string {
+        if (!this->m_namespaces.empty()) {
+            return fmt::format("{}::{}", fmt::join(this->m_namespaces, "::"), typeName);
+        } else {
+            return std::string(typeName);
+        }
+    }
+
     auto Parser::parseDriver() -> ParseResult<ast::Node> {
         // Read the driver's name
-        auto driverName = this->getValue(-1);
+        auto driverName = this->getFullTypeName(this->getValue(-1));
 
         // Parse template list
         std::vector<std::unique_ptr<ast::NodeVariable>> templateParameters;
         if (matchesSequence(OperatorLessThan)) {
-            auto templateList = this->parseParameterList();
+            for (auto listParser = this->parseParameterList(); listParser;) {
+                auto parameter = listParser();
 
-            if (!templateList.has_value())
-                return std::unexpected(templateList.error());
+                if (!parameter.has_value())
+                    return std::unexpected(parameter.error());
 
-            auto &value = templateList.value();
-            std::move(value.begin(), value.end(), std::back_inserter(templateParameters));
+                templateParameters.push_back(std::move(parameter.value()));
+            }
 
             if (!matchesSequence(OperatorGreaterThan))
                 return std::unexpected(ParseError::UnexpectedToken);
@@ -64,20 +74,20 @@ namespace compiler::language::parser {
         return result;
     }
 
-    auto Parser::parseParameterList() -> ParseListResult<ast::NodeVariable> {
-        std::vector<std::unique_ptr<ast::NodeVariable>> parameters;
+    auto Parser::parseParameterList() -> hlp::Generator<ParseResult<ast::NodeVariable>> {
         while (true) {
             // Parse the parameter type
             auto type = parseType();
             if (!type.has_value()) {
-                return std::unexpected(type.error());
+                co_yield std::unexpected(type.error());
+                co_return;
             }
 
             // Parse the name of a parameter
             if (matchesSequence(Identifier)) {
                 auto parameterName = this->getValue(-1);
 
-                parameters.emplace_back(std::make_unique<ast::NodeVariable>(parameterName, std::move(*type)));
+                co_yield std::make_unique<ast::NodeVariable>(parameterName, std::move(*type));
 
                 // Check if we have reached the end of the parameter list
                 if (matchesSequence(SeparatorComma)) {
@@ -87,11 +97,10 @@ namespace compiler::language::parser {
                 }
 
             } else {
-                return std::unexpected(ParseError::UnexpectedToken);
+                co_yield std::unexpected(ParseError::UnexpectedToken);
+                co_return;
             }
         }
-
-        return parameters;
     }
 
     [[nodiscard]] auto Parser::parseFunction() -> ParseResult<ast::NodeFunction> {
@@ -100,13 +109,14 @@ namespace compiler::language::parser {
         // Parse the function header
         std::vector<std::unique_ptr<ast::NodeVariable>> parameters;
         while (!matchesSequence(SeparatorCloseParenthesis)) {
-            auto result = this->parseParameterList();
-            if (!result.has_value()) {
-                return std::unexpected(result.error());
-            }
+            for (auto listParser = this->parseParameterList(); listParser;) {
+                auto parameter = listParser();
 
-            auto &value = result.value();
-            std::move(value.begin(), value.end(), std::back_inserter(parameters));
+                if (!parameter.has_value())
+                    return std::unexpected(parameter.error());
+
+                parameters.push_back(std::move(parameter.value()));
+            }
         }
 
         // Parse the function body
@@ -166,7 +176,12 @@ namespace compiler::language::parser {
 
             return std::make_unique<ast::NodeType>(typeName, std::move(type));
         } else if (matchesSequence(Identifier)) {
-            auto typeName = this->getValue(-1);
+            auto typeName = std::string(this->getValue(-1));
+            while (matchesSequence(OperatorColon, OperatorColon, Identifier)) {
+                typeName += fmt::format("::{}", this->getValue(-1));
+            }
+
+            typeName = this->getFullTypeName(typeName);
 
             if (this->m_drivers.contains(typeName)) {
                 auto driver = hlp::unique_ptr_cast<ast::NodeDriver>(this->m_drivers[typeName]->clone());
@@ -201,9 +216,20 @@ namespace compiler::language::parser {
         }
     }
 
-    auto Parser::parse(const std::vector<lexer::Token> &tokens) -> ASTGenerator {
-        this->m_current = tokens.begin();
-        this->m_end     = tokens.end();
+    [[nodiscard]] auto Parser::parseNamespace() -> ASTGenerator {
+        bool usedNamespace = false;
+        if (matchesSequence(KeywordNamespace)) {
+            usedNamespace = true;
+
+            if (matchesSequence(Identifier, SeparatorOpenBrace)) {
+                auto namespaceName = this->getValue(-2);
+
+                this->m_namespaces.push_back(namespaceName);
+            } else {
+                co_yield std::unexpected(ParseError::UnexpectedToken);
+                co_return;
+            }
+        }
 
         while (true) {
             // Check if we have reached the end of the input
@@ -211,23 +237,56 @@ namespace compiler::language::parser {
                 co_return;
             }
 
-            ParseResult<ast::Node> node;
-
-            // Parse top level constructs
             if (matchesSequence(KeywordDriver, Identifier)) {
-                node = parseDriver();
+                co_yield parseDriver();
+            } else if (this->peek() == KeywordNamespace) {
+                for (auto namespaceParser = parseNamespace(); namespaceParser;) {
+                    co_yield namespaceParser();
+                }
+            } else if (this->peek() == SeparatorCloseBrace || this->peek().type() == Token::Type::EndOfInput) {
+                break;
             } else {
-                node = std::unexpected(ParseError::UnexpectedToken);
+                co_yield std::unexpected(ParseError::UnexpectedToken);
+                co_return;
+            }
+        }
+
+        if (usedNamespace) {
+            if (!matchesSequence(SeparatorCloseBrace)) {
+                co_yield std::unexpected(ParseError::UnexpectedToken);
+                co_return;
+            }
+            this->m_namespaces.pop_back();
+        }
+    }
+
+    auto Parser::parse(const std::vector<lexer::Token> &tokens) -> ASTGenerator {
+        this->m_current = tokens.begin();
+        this->m_end     = tokens.end();
+
+        while (true) {
+            for (auto namespaceParser = parseNamespace(); namespaceParser;) {
+                auto node = namespaceParser();
+
+                if (!node.has_value()) {
+                    co_yield std::unexpected(node.error());
+                    co_return;
+                }
+
+                // Check if we have encountered an error
+                bool error = !node.has_value();
+
+                // Yield the node
+                co_yield std::move(node);
+
+                // If we have encountered an error, stop parsing
+                if (error) {
+                    co_return;
+                }
             }
 
-            // Check if we have encountered an error
-            bool error = !node.has_value();
-
-            // Yield the node
-            co_yield std::move(node);
-
-            // If we have encountered an error, stop parsing
-            if (error) {
+            // Check if we have reached the end of the input
+            if (this->m_current == this->m_end || this->peek().type() == Token::Type::EndOfInput) {
                 co_return;
             }
         }

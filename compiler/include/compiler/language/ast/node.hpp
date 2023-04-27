@@ -172,12 +172,12 @@ namespace compiler::language::ast {
 
     struct NodeDriver : public Node {
         NodeDriver(
-                std::string_view name,
+                std::string name,
                 std::unique_ptr<NodeDriver> &&inheritance,
                 std::vector<std::unique_ptr<NodeVariable>> &&templateParameters,
                 std::vector<std::unique_ptr<NodeFunction>> &&functions
                 ) :
-                m_name(name),
+                m_name(std::move(name)),
                 m_inheritance(std::move(inheritance)),
                 m_templateParameters(std::move(templateParameters)),
                 m_functions(std::move(functions)) { }
@@ -234,7 +234,7 @@ namespace compiler::language::ast {
         }
 
     private:
-        std::string_view m_name;
+        std::string m_name;
         std::unique_ptr<NodeDriver> m_inheritance;
         std::vector<std::unique_ptr<NodeVariable>> m_templateParameters;
         std::vector<lexer::Token> m_templateValues;
