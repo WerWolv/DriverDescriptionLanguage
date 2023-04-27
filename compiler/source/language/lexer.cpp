@@ -241,10 +241,14 @@ namespace compiler::language::lexer {
             LexBuiltinType<"f32">,
             LexBuiltinType<"f64">,
             LexBuiltinType<"bool">,
+            LexBuiltinType<"char">,
+            LexBuiltinType<"string">,
+            LexBuiltinType<"bytes">,
+            LexBuiltinType<"void">,
 
             // Literals
             LexStringLike<"\"", "\"", Token::Type::StringLiteral>,
-            LexStringLike<"'", "'", Token::Type::CharacterLiteral>,
+            LexStringLike<"\'", "\'", Token::Type::CharacterLiteral>,
             LexStringLike<"[[", "]]", Token::Type::RawCodeBlock>,
             LexStringLike<"{%", "%}", Token::Type::Placeholder>,
             LexNumericLiteral,
@@ -263,7 +267,7 @@ namespace compiler::language::lexer {
             LexOperator<"<">,
             LexOperator<">">,
             LexOperator<":">,
-            LexOperator<"=>">,
+            LexOperator<"->">,
 
             // Identifiers
             LexIdentifier

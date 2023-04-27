@@ -2,6 +2,12 @@ namespace STM32 {
 
     driver I2C<u8 Address> {
 
+        fn transmit(u8 reg, bytes data) {
+            [[
+                HAL_I2C_Master_Transmit(reg, data, data_size);
+            ]]
+        }
+
     }
 
 }

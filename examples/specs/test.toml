@@ -1,15 +1,15 @@
-# MAX232 UART Reciver
+# MAX232 RS232 tranceiver
 [MAX232]
-path = "max232.drv"                     # Load it's definition from the max232.drv file
+path = "drivers/max232.drv"                     # Load it's definition from the max232.drv file
 config = { impl = "SC18IM704" }         # Set the placeholders, define "impl" as "SC18IM704"
 depends = ["SC18IM704"]                 # Define the dependencies
 
 # SC18IM704 I2C <-> UART bridge
 [SC18IM704]
-path = "sc16is750.drv"                  # Load it's definition from the sc18im704.drv file
+path = "drivers/sc16is750.drv"                  # Load it's definition from the sc18im704.drv file
 config = { impl = "STM32" }             # Set the placeholders, define "impl" as "STM32"
 depends = ["STM32"]                     # Define the dependencies
 
 # STM32 I2C driver
 [STM32]
-path = "stm32.drv"                     # Load it's definition from the stm32.drv file
+path = "drivers/stm32.drv"                     # Load it's definition from the stm32.drv file

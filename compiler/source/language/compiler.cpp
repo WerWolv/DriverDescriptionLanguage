@@ -86,6 +86,10 @@ namespace compiler::language {
         // Process all drivers mentioned in the specs file
         std::vector<std::unique_ptr<ast::Node>> nodes;
         for (const auto &[name, driver] : specsFile.drivers()) {
+            if (this->m_compiledDrivers.contains(name)) {
+                continue;
+            }
+
             auto newNodes = processDriver(driver);
 
             // Insert new nodes into result
