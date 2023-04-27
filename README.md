@@ -1,4 +1,4 @@
-# Driver Definition Language
+# Driver Description Language
 
 ## What is this?
 This Project is an attempt to create a description language to define drivers for hardware peripherals in a reusable manner.
