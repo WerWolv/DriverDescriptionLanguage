@@ -48,7 +48,7 @@ To use these drivers now, you need to write a specs file that tells the compiler
 # MAX17261 Fuel Gauge
 [MAX17261]
 path = "max17261.drv"                     # Load its definition from the max17261.drv file
-config = { impl = "STM32" }               # Set the placeholders, define "impl" as "SC18IM704"
+config = { impl = "STM32" }               # Set the placeholders, define "impl" as "STM32"
 depends = ["STM32"]                       # Define the dependencies
 
 # STM32 I2C driver
